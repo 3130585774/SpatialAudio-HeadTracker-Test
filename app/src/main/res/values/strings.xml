@@ -1,3 +1,36 @@
 <resources>
     <string name="app_name">Headtracker Test</string>
+    
+    <!-- UI Text -->
+    <string name="spatial_audio_status">Spatial Audio Status</string>
+    <string name="playback_status">Playback Status</string>
+    <string name="head_tracker_data">Head Tracker Data</string>
+    <string name="play_test_audio">Play Test Audio</string>
+    <string name="stop">Stop</string>
+    
+    <!-- Status Messages -->
+    <string name="loading_status">Loading spatial audio status…</string>
+    <string name="head_tracker_not_available">Head tracker data: Not available</string>
+    <string name="head_tracker_active">Head tracker active - Audio responding to head movement</string>
+    <string name="already_playing">Already playing</string>
+    <string name="stopped_playing">Stopped playing</string>
+    <string name="audio_player_not_initialized">AudioPlayer not initialized</string>
+    <string name="started_playing_format">Started playing 5.1 surround tone - Spatialized: %b</string>
+    <string name="error_format">Error: %s</string>
+    
+    <!-- Device Status -->
+    <string name="device_spatialization_support">📱 Device Spatialization Support: %s</string>
+    <string name="immersive_level">   Immersive Level: %d</string>
+    <string name="current_route_available">🔌 Current Route Available: %s</string>
+    <string name="spatializer_enabled">⚙️ Spatializer Enabled: %s</string>
+    <string name="head_tracker_available">🎯 Head Tracker Available: %s</string>
+    <string name="yes_check">✅ Yes</string>
+    <string name="no_cross">❌ No</string>
+    
+    <!-- Warning and Error Messages -->
+    <string name="device_no_spatialization">❌ Device does not support spatialization</string>
+    <string name="spatialization_not_available">⚠️ Spatialization not available with current audio output</string>
+    <string name="spatialization_disabled">⚠️ Spatialization is disabled</string>
+    <string name="head_tracking_not_available">⚠️ Head tracking not available</string>
+    <string name="ready_for_spatial_audio">🎉 Ready for spatial audio with head tracking!</string>
 </resources>

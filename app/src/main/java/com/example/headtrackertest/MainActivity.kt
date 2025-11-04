@@ -24,18 +24,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.headtrackertest.ui.theme.HeadtrackerTestTheme
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.sin
 
+/**
+ * Main activity for the Spatial Audio Head Tracker Test application.
+ * 
+ * This activity demonstrates the use of Android's Spatializer API for spatial audio
+ * and head tracking functionality. It provides a UI to check device capabilities
+ * and play test audio with spatial effects.
+ */
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,32 +67,41 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Composable function that displays the spatial audio demo UI.
+ * 
+ * @param spatializer The Spatializer instance from AudioManager
+ * @param modifier Modifier for the composable
+ */
 @Composable
 fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
     var isPlaying by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf("Loading spatial audio status...") }
-    var headTrackerData by remember { mutableStateOf("Head tracker data: Not available") }
+    var statusText by remember { mutableStateOf("") }
+    var headTrackerData by remember { mutableStateOf("") }
     var playbackStatus by remember { mutableStateOf("") }
-
-
     var audioPlayer by remember { mutableStateOf<SpatialAudioPlayer?>(null) }
 
-
+    // Initialize spatial audio status and player
     LaunchedEffect(spatializer) {
         statusText = buildStatusText(spatializer)
-
-
+        
         if (spatializer.isAvailable) {
             audioPlayer = SpatialAudioPlayer(spatializer)
         }
     }
 
-
+    // Update head tracker data while playing
     LaunchedEffect(isPlaying) {
         while (isPlaying && spatializer.isHeadTrackerAvailable) {
-
-            headTrackerData = "Head tracker active - Audio responding to head movement"
+            headTrackerData = stringResource(R.string.head_tracker_active)
             delay(100)
+        }
+    }
+
+    // Clean up audio player when composable is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            audioPlayer?.stopPlaying()
         }
     }
 
@@ -91,11 +109,11 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
+        // Spatial Audio Status Card
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Spatial Audio Status",
+                    text = stringResource(R.string.spatial_audio_status),
                     style = MaterialTheme.typography.headlineSmall
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -103,7 +121,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
             }
         }
 
-
+        // Playback Status Card (only shown when there's status to display)
         if (playbackStatus.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -115,7 +133,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Playback Status",
+                        text = stringResource(R.string.playback_status),
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -124,12 +142,12 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
             }
         }
 
-
+        // Head Tracker Data Card (only shown if head tracker is available)
         if (spatializer.isHeadTrackerAvailable) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Head Tracker Data",
+                        text = stringResource(R.string.head_tracker_data),
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -138,7 +156,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
             }
         }
 
-
+        // Control Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -146,8 +164,8 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
             Button(
                 onClick = {
                     if (!isPlaying) {
-                        val result =
-                            audioPlayer?.startPlayingTone() ?: "AudioPlayer not initialized"
+                        val result = audioPlayer?.startPlayingTone() 
+                            ?: stringResource(R.string.audio_player_not_initialized)
                         playbackStatus = result
                         if (result.contains("Started playing")) {
                             isPlaying = true
@@ -156,33 +174,55 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
                 },
                 enabled = spatializer.isAvailable && !isPlaying
             ) {
-                Text("Play Test Audio")
+                Text(stringResource(R.string.play_test_audio))
             }
 
             Button(
                 onClick = {
                     audioPlayer?.stopPlaying()
                     isPlaying = false
-                    playbackStatus = "Stopped playing"
+                    playbackStatus = stringResource(R.string.stopped_playing)
                 },
                 enabled = isPlaying
             ) {
-                Text("Stop")
+                Text(stringResource(R.string.stop))
             }
         }
     }
 }
 
+/**
+ * Player class for generating and playing spatial audio with 5.1 surround sound.
+ * 
+ * This class creates an AudioTrack configured for spatial audio and generates
+ * test tones for each channel in a 5.1 surround setup.
+ * 
+ * @param spatializer The Spatializer instance to check spatialization capabilities
+ */
 class SpatialAudioPlayer(private val spatializer: Spatializer) {
     private var audioTrack: AudioTrack? = null
     private var isPlaying = false
+    private var audioThread: Thread? = null
     private var canSpatialized = false
 
+    companion object {
+        private const val SAMPLE_RATE = 48000
+        private const val BUFFER_SIZE = 1024
+        private const val CHANNELS_5_1 = 6
+        private const val BASE_FREQUENCY = 440.0 // A4 note
+        private const val AMPLITUDE_SCALE = 0.2
+    }
+
+    /**
+     * Starts playing a test tone with 5.1 surround sound.
+     * 
+     * @return Status message indicating success or failure
+     */
     fun startPlayingTone(): String {
         if (isPlaying) return "Already playing"
 
         try {
-
+            // Configure audio attributes for spatial audio
             val audioAttributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -190,16 +230,16 @@ class SpatialAudioPlayer(private val spatializer: Spatializer) {
                 .build()
 
             val audioFormat = AudioFormat.Builder()
-                .setSampleRate(48000)
+                .setSampleRate(SAMPLE_RATE)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                 .setChannelMask(AudioFormat.CHANNEL_OUT_5POINT1)
                 .build()
 
-
+            // Check if the audio can be spatialized
             canSpatialized = spatializer.canBeSpatialized(audioAttributes, audioFormat)
 
             val minBufferSize = AudioTrack.getMinBufferSize(
-                48000,
+                SAMPLE_RATE,
                 AudioFormat.CHANNEL_OUT_5POINT1,
                 AudioFormat.ENCODING_PCM_16BIT
             )
@@ -214,9 +254,10 @@ class SpatialAudioPlayer(private val spatializer: Spatializer) {
             audioTrack?.play()
             isPlaying = true
 
-            Thread {
+            // Start audio generation in a separate thread
+            audioThread = Thread {
                 generateAudio()
-            }.start()
+            }.apply { start() }
 
             return "Started playing 5.1 surround tone - Spatialized: $canSpatialized"
 
@@ -226,40 +267,54 @@ class SpatialAudioPlayer(private val spatializer: Spatializer) {
         }
     }
 
+    /**
+     * Stops playback and releases audio resources.
+     */
     fun stopPlaying() {
         isPlaying = false
+        
+        // Wait for audio thread to finish
+        audioThread?.join(1000)
+        audioThread = null
+        
+        // Release audio track resources
         audioTrack?.stop()
         audioTrack?.release()
         audioTrack = null
     }
 
+    /**
+     * Generates multi-channel audio data for 5.1 surround sound.
+     * Each channel plays a different frequency to demonstrate spatial positioning:
+     * - Front Left: 440Hz (A4)
+     * - Front Right: 554Hz (C#5 - higher fourth)
+     * - Center: 330Hz (E4 - lower fourth)
+     * - LFE: 80Hz (low frequency)
+     * - Rear Left: 660Hz (E5)
+     * - Rear Right: 880Hz (A5 - higher octave)
+     */
     private fun generateAudio() {
-        val sampleRate = 48000
-        val bufferSize = 1024
-        val channels = 6 // 5.1
-        val buffer = ShortArray(bufferSize * channels)
-
+        val buffer = ShortArray(BUFFER_SIZE * CHANNELS_5_1)
         var phase = 0.0
-        val baseFreq = 440.0 // A4音符
-        val phaseIncrement = 2 * PI * baseFreq / sampleRate
+        val phaseIncrement = 2 * PI * BASE_FREQUENCY / SAMPLE_RATE
 
         while (isPlaying) {
-            // 为每个声道生成不同频率的音调
-            for (i in 0 until bufferSize) {
-                val sampleIndex = i * channels
-                val amplitude = (Short.MAX_VALUE * 0.2).toInt().toShort()
+            // Generate audio samples for each channel
+            for (i in 0 until BUFFER_SIZE) {
+                val sampleIndex = i * CHANNELS_5_1
+                val amplitude = (Short.MAX_VALUE * AMPLITUDE_SCALE).toInt().toShort()
 
-                // 前左声道 (440Hz)
+                // Front left channel (440Hz)
                 buffer[sampleIndex] = (sin(phase) * amplitude).toInt().toShort()
-                // 前右声道 (554Hz - 高四度)
+                // Front right channel (554Hz - higher fourth)
                 buffer[sampleIndex + 1] = (sin(phase * 1.26) * amplitude).toInt().toShort()
-                // 中央声道 (330Hz - 低四度)
+                // Center channel (330Hz - lower fourth)
                 buffer[sampleIndex + 2] = (sin(phase * 0.75) * amplitude).toInt().toShort()
-                // LFE声道 (80Hz - 低频)
+                // LFE channel (80Hz - low frequency)
                 buffer[sampleIndex + 3] = (sin(phase * 0.18) * amplitude).toInt().toShort()
-                // 后左声道 (660Hz)
+                // Rear left channel (660Hz)
                 buffer[sampleIndex + 4] = (sin(phase * 1.5) * amplitude).toInt().toShort()
-                // 后右声道 (880Hz - 高八度)
+                // Rear right channel (880Hz - higher octave)
                 buffer[sampleIndex + 5] = (sin(phase * 2.0) * amplitude).toInt().toShort()
 
                 phase += phaseIncrement
@@ -269,23 +324,29 @@ class SpatialAudioPlayer(private val spatializer: Spatializer) {
             audioTrack?.write(buffer, 0, buffer.size)
         }
     }
-
-
 }
 
-
+/**
+ * Builds a formatted status text describing the spatial audio capabilities of the device.
+ * 
+ * @param spatializer The Spatializer instance to query for capabilities
+ * @return Formatted string with device status information
+ */
 fun buildStatusText(spatializer: Spatializer): String {
     return buildString {
-
         val immersiveLevel = spatializer.immersiveAudioLevel
         val supportsSpatialization = immersiveLevel != Spatializer.SPATIALIZER_IMMERSIVE_LEVEL_NONE
+        
+        val yesCheck = "✅ Yes"
+        val noCross = "❌ No"
 
-        appendLine("📱 Device Spatialization Support: ${if (supportsSpatialization) "✅ Yes" else "❌ No"}")
+        appendLine("📱 Device Spatialization Support: ${if (supportsSpatialization) yesCheck else noCross}")
         appendLine("   Immersive Level: $immersiveLevel")
-        appendLine("🔌 Current Route Available: ${if (spatializer.isAvailable) "✅ Yes" else "❌ No"}")
-        appendLine("⚙️ Spatializer Enabled: ${if (spatializer.isEnabled) "✅ Yes" else "❌ No"}")
-        appendLine("🎯 Head Tracker Available: ${if (spatializer.isHeadTrackerAvailable) "✅ Yes" else "❌ No"}")
+        appendLine("🔌 Current Route Available: ${if (spatializer.isAvailable) yesCheck else noCross}")
+        appendLine("⚙️ Spatializer Enabled: ${if (spatializer.isEnabled) yesCheck else noCross}")
+        appendLine("🎯 Head Tracker Available: ${if (spatializer.isHeadTrackerAvailable) yesCheck else noCross}")
         appendLine("")
+        
         when {
             !supportsSpatialization -> appendLine("❌ Device does not support spatialization")
             !spatializer.isAvailable -> appendLine("⚠️ Spatialization not available with current audio output")
