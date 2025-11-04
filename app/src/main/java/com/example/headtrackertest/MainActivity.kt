@@ -93,7 +93,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
     // Update head tracker data while playing
     LaunchedEffect(isPlaying) {
         while (isPlaying && spatializer.isHeadTrackerAvailable) {
-            headTrackerData = stringResource(R.string.head_tracker_active)
+            headTrackerData = "Head tracker active - Audio responding to head movement"
             delay(100)
         }
     }
@@ -165,7 +165,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
                 onClick = {
                     if (!isPlaying) {
                         val result = audioPlayer?.startPlayingTone() 
-                            ?: stringResource(R.string.audio_player_not_initialized)
+                            ?: "AudioPlayer not initialized"
                         playbackStatus = result
                         if (result.contains("Started playing")) {
                             isPlaying = true
@@ -181,7 +181,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
                 onClick = {
                     audioPlayer?.stopPlaying()
                     isPlaying = false
-                    playbackStatus = stringResource(R.string.stopped_playing)
+                    playbackStatus = "Stopped playing"
                 },
                 enabled = isPlaying
             ) {
