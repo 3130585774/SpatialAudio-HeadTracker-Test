@@ -81,6 +81,11 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
     var playbackStatus by remember { mutableStateOf("") }
     var audioPlayer by remember { mutableStateOf<SpatialAudioPlayer?>(null) }
 
+    // Get string resources
+    val headTrackerActiveText = stringResource(R.string.head_tracker_active)
+    val audioPlayerNotInitializedText = stringResource(R.string.audio_player_not_initialized)
+    val stoppedPlayingText = stringResource(R.string.stopped_playing)
+
     // Initialize spatial audio status and player
     LaunchedEffect(spatializer) {
         statusText = buildStatusText(spatializer)
@@ -91,9 +96,9 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
     }
 
     // Update head tracker data while playing
-    LaunchedEffect(isPlaying) {
+    LaunchedEffect(isPlaying, headTrackerActiveText) {
         while (isPlaying && spatializer.isHeadTrackerAvailable) {
-            headTrackerData = "Head tracker active - Audio responding to head movement"
+            headTrackerData = headTrackerActiveText
             delay(100)
         }
     }
@@ -165,7 +170,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
                 onClick = {
                     if (!isPlaying) {
                         val result = audioPlayer?.startPlayingTone() 
-                            ?: "AudioPlayer not initialized"
+                            ?: audioPlayerNotInitializedText
                         playbackStatus = result
                         if (result.contains("Started playing")) {
                             isPlaying = true
@@ -181,7 +186,7 @@ fun SpatialAudioDemo(spatializer: Spatializer, modifier: Modifier = Modifier) {
                 onClick = {
                     audioPlayer?.stopPlaying()
                     isPlaying = false
-                    playbackStatus = "Stopped playing"
+                    playbackStatus = stoppedPlayingText
                 },
                 enabled = isPlaying
             ) {
@@ -211,6 +216,7 @@ class SpatialAudioPlayer(private val spatializer: Spatializer) {
         private const val CHANNELS_5_1 = 6
         private const val BASE_FREQUENCY = 440.0 // A4 note
         private const val AMPLITUDE_SCALE = 0.2
+        private const val THREAD_JOIN_TIMEOUT_MS = 1000L
     }
 
     /**
@@ -274,7 +280,7 @@ class SpatialAudioPlayer(private val spatializer: Spatializer) {
         isPlaying = false
         
         // Wait for audio thread to finish
-        audioThread?.join(1000)
+        audioThread?.join(THREAD_JOIN_TIMEOUT_MS)
         audioThread = null
         
         // Release audio track resources
